@@ -1,5 +1,5 @@
 # Laboratoria-Proy2
- En este proyecto, exploramos este aspecto del análisis de datos, destacando cómo ayuda a mejorar la comprensión de los fenómenos, respaldar la investigación y tomar decisiones informadas.
+
 ## Análisis de Éxito Musical en Spotify
 ###  Objetivo:
   Analizar las características de las canciones y su relación con el éxito medido en términos de streams en Spotify, así como comparar el comportamiento de las canciones en otras plataformas de música como Deezer y Apple Music. Este análisis busca identificar patrones y factores que puedan influir en la popularidad de las canciones.
