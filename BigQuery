@@ -1,0 +1,224 @@
+CREATE OR REPLACE VIEW `laboratoria-426414.proyecto2_hipotesis.clean_track_in_competition` AS
+SELECT 
+  *
+EXCEPT (in_shazam_charts)
+FROM 
+  `laboratoria-426414.proyecto2_hipotesis.track_in_competition`
+WHERE
+  track_id <> '5675634' AND
+  track_id <> '3814670' AND
+  track_id <> '7173596' AND
+  track_id <> '5080031' AND
+  track_id <> '1119309' AND
+  track_id <> '4586215' AND
+  track_id <> '4967469' AND
+  track_id <> '8173823' AND
+  track_id <> '4061483' AND
+  track_id <> '0:00';
+
+CREATE OR REPLACE VIEW `laboratoria-426414.proyecto2_hipotesis.clean_track_in_spotify` AS
+  SELECT
+    track_id,
+    tracks_name,
+    artist_s__name,
+    streams_,
+    released_date,
+    released_year,
+    artist_count,
+    in_spotify_playlists,
+    in_spotify_charts
+  FROM
+  (
+  SELECT
+  *,
+    REGEXP_REPLACE(track_name, r'[^a-zA-Z0-9]', '') AS tracks_name,
+    REGEXP_REPLACE(artist_s_name, r'[^a-zA-Z0-9]', '') AS artist_s__name,
+    CAST(streams AS INT64) AS streams_,
+    CONCAT( CAST(released_year AS STRING), '-', LPAD(CAST(released_month AS STRING), 2, '0'), '-', LPAD(CAST(released_day AS STRING), 2, '0') ) AS released_date
+  FROM
+    `laboratoria-426414.proyecto2_hipotesis.track_in_spotify`
+  WHERE
+    streams NOT LIKE 'BPM%'
+  AND track_id <> '5675634'
+  AND track_id <> '3814670'
+  AND track_id <> '7173596'
+  AND track_id <> '5080031'
+  AND track_id <> '1119309'
+  AND track_id <> '4586215'
+  AND track_id <> '4967469'
+  AND track_id <> '8173823'
+  AND track_id <> 'O:OO')
+
+CREATE OR REPLACE VIEW `laboratoria-426414.proyecto2_hipotesis.clean_track_technical_info` AS
+SELECT 
+  *
+EXCEPT (key,mode)
+FROM 
+  `laboratoria-426414.proyecto2_hipotesis.track_technical_info`
+WHERE
+  track_id <> '5675634' AND
+  track_id <> '3814670' AND
+  track_id <> '7173596' AND
+  track_id <> '5080031' AND
+  track_id <> '1119309' AND
+  track_id <> '4586215' AND
+  track_id <> '4967469' AND
+  track_id <> '8173823' AND
+  track_id <> '4061483' AND
+  track_id <> '0:00';
+
+CREATE OR REPLACE VIEW `laboratoria-426414.proyecto2_hipotesis.categorized` AS
+
+WITH percentiles AS (
+  SELECT
+    a.track_id,
+    NTILE(4) OVER (ORDER BY streams_) AS quartile_streams,
+    NTILE(4) OVER (ORDER BY bpm) AS quartile_bpm,
+    NTILE(4) OVER (ORDER BY danceability_) AS quartile_danceability,
+    NTILE(4) OVER (ORDER BY valence_) AS quartile_valence,
+    NTILE(4) OVER (ORDER BY energy_) AS quartile_energy,
+    NTILE(4) OVER (ORDER BY acousticness_) AS quartile_acousticness,
+    NTILE(4) OVER (ORDER BY instrumentalness_) AS quartile_instrumentalness,
+    NTILE(4) OVER (ORDER BY liveness_) AS quartile_liveness,
+    NTILE(4) OVER (ORDER BY speechiness_) AS quartile_speechiness
+  FROM
+    `laboratoria-426414.proyecto2_hipotesis.clean_track_in_spotify` a
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.clean_table_track_in_competition` b
+  ON
+    a.track_id = b.track_id
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.clean_table_track_technical_info` c
+  ON
+    a.track_id = c.track_id
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.total_playlists` d
+  ON
+    a.track_id = d.id_cancion
+),
+categorized AS (
+  SELECT
+    track_id,
+    CASE
+      WHEN quartile_streams = 1 THEN 'Bajo'
+      WHEN quartile_streams = 2 THEN 'Bajo'
+      WHEN quartile_streams = 3 THEN 'Alto'
+      ELSE 'fuera_rango'
+    END AS streams_category,
+    CASE
+      WHEN quartile_bpm = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS bpm_category,
+    CASE
+      WHEN quartile_danceability = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS danceability_category,
+    CASE
+      WHEN quartile_valence = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS valence_category,
+    CASE
+      WHEN quartile_energy = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS energy_category,
+    CASE
+      WHEN quartile_acousticness = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS acousticness_category,
+    CASE
+      WHEN quartile_instrumentalness = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS instrumentalness_category,
+    CASE
+      WHEN quartile_liveness = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS liveness_category,
+    CASE
+      WHEN quartile_speechiness = 4 THEN 'Alto'
+      ELSE 'Bajo'
+    END AS speechiness_category
+  FROM
+    percentiles
+)
+
+SELECT * FROM categorized
+WHERE streams_category != 'fuera_rango';
+
+CREATE OR REPLACE VIEW `laboratoria-426414.proyecto2_hipotesis.cleaned_data` AS
+WITH percentiles AS (
+  SELECT
+    a.track_id,
+    NTILE(3) OVER (ORDER BY streams_) AS quartile_streams,
+    CASE
+      WHEN NTILE(3) OVER (ORDER BY streams_) = 1 THEN 'Bajo'
+      WHEN NTILE(3) OVER (ORDER BY streams_) = 2 THEN 'Medio'
+      WHEN NTILE(3) OVER (ORDER BY streams_) = 3 THEN 'Alto'
+    END AS streams_category,
+    NTILE(3) OVER (ORDER BY bpm) AS quartile_bpm,
+    CASE
+      WHEN NTILE(3) OVER (ORDER BY bpm) = 1 THEN 'Bajo'
+      WHEN NTILE(3) OVER (ORDER BY bpm) = 2 THEN 'Medio'
+      WHEN NTILE(3) OVER (ORDER BY bpm) = 3 THEN 'Alto'
+    END AS bpm_category
+  FROM
+    `laboratoria-426414.proyecto2_hipotesis.clean_track_in_spotify` a
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.clean_table_track_in_competition` b
+  ON
+    a.track_id = b.track_id
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.clean_table_track_technical_info` c
+  ON
+    a.track_id = c.track_id
+  JOIN
+    `laboratoria-426414.proyecto2_hipotesis.total_playlists` d
+  ON
+    a.track_id = d.id_cancion
+)
+SELECT
+  a.track_id,
+  a.tracks_name,
+  a.artist_s__name,
+  a.streams_,
+  a.artist_count,
+  a.released_date,
+  a.released_year,
+  a.released_month,
+  a.released_day,
+  a.in_spotify_playlists,
+  a.in_spotify_charts,
+  b.in_apple_playlists,
+  b.in_apple_charts,
+  b.in_deezer_playlists,
+  b.in_deezer_charts,
+  c.bpm,
+  c.danceability_,
+  c.valence_,
+  c.energy_,
+  c.acousticness_,
+  c.instrumentalness_,
+  c.liveness_,
+  c.speechiness_,
+  d.total_listas_reproduccion,
+  e.quartile_streams,
+  e.streams_category,
+  e.quartile_bpm,
+  e.bpm_category
+FROM
+  `laboratoria-426414.proyecto2_hipotesis.clean_track_in_spotify` a
+JOIN
+  `laboratoria-426414.proyecto2_hipotesis.clean_table_track_in_competition` b
+ON
+  a.track_id = b.track_id
+JOIN
+  `laboratoria-426414.proyecto2_hipotesis.clean_table_track_technical_info` c
+ON
+  a.track_id = c.track_id
+JOIN
+  `laboratoria-426414.proyecto2_hipotesis.total_playlists` d
+ON
+  a.track_id = d.id_cancion
+JOIN
+  percentiles e
+ON
+  a.track_id = e.track_id;
